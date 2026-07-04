@@ -42,6 +42,12 @@ WIF prefix / `tprv` version bytes, are banner-labeled TESTNET on the result
 screen, and save under `-testnet` filenames. The chain choice changes only
 the encodings of the same derived child.
 
+Two options are exhaustive here: testnet3, testnet4, signet and regtest all
+share the same WIF/extended-key serialization (`0xEF`/`tprv` — Bitcoin Core
+gives them identical base58 prefixes), so the "Testnet" encoding works
+verbatim on all of them. The networks only diverge in things this app never
+emits, like bech32 address prefixes (`tb1` vs `bcrt1`).
+
 ## Saving derivations
 
 <p align="center">
