@@ -3,7 +3,7 @@ mod theme;
 use std::rc::Rc;
 
 use bip85_core::bip85::{derive, Application};
-use bip85_core::{seedqr, Xprv};
+use bip85_core::{seedqr, Network, Xprv};
 use slint_keyos_platform::app_ui;
 use slint_keyos_platform::fs::{self, Location, OpenFlags};
 use slint_keyos_platform::qrcode;
@@ -53,15 +53,24 @@ fn app_main(cx: AppContext, ui: AppWindow) {
             let form = ui.global::<Form>();
             let (app_index, child_index) = (form.get_app_index(), form.get_child_index());
             let Some((label, app, tag)) = app_for_index(app_index) else { return };
+            // Network only exists for the outputs that encode one.
+            let network_encoded = matches!(app, Application::Wif | Application::Xprv);
+            let testnet = network_encoded && form.get_network_index() == 1;
+            let network = if testnet { Network::Testnet } else { Network::Mainnet };
 
             ui.global::<Ui>().set_busy(true);
-            let result = derive_from_device_seed(app, child_index as u32);
+            let result = derive_from_device_seed(app, child_index as u32, network);
             ui.global::<Ui>().set_busy(false);
 
             match result {
                 Ok(secret) => {
+                    let net_log = if network_encoded {
+                        if testnet { " net=testnet" } else { " net=mainnet" }
+                    } else {
+                        ""
+                    };
                     log::info!(
-                        "cb: derive app={tag} index={child_index} ok path={}",
+                        "cb: derive app={tag} index={child_index}{net_log} ok path={}",
                         secret.path
                     );
                     let seedqr_digits = matches!(app, Application::Bip39 { .. })
@@ -71,6 +80,7 @@ fn app_main(cx: AppContext, ui: AppWindow) {
 
                     let d = ui.global::<Derived>();
                     d.set_app_label(format!("{label} · #{child_index}").into());
+                    d.set_testnet(testnet);
                     d.set_path(secret.path.as_str().into());
                     d.set_display(display_text(app, &secret.display).into());
                     d.set_has_seedqr(seedqr_digits.is_some());
@@ -80,6 +90,7 @@ fn app_main(cx: AppContext, ui: AppWindow) {
                         tag,
                         label,
                         index: child_index as u32,
+                        testnet: network_encoded.then_some(testnet),
                         path: secret.path.clone(),
                         display: secret.display.clone(),
                         seedqr: seedqr_digits,
@@ -101,19 +112,18 @@ fn app_main(cx: AppContext, ui: AppWindow) {
         ui.global::<Callbacks>().on_save(move |location| {
             let Some(ui) = ui_weak.upgrade() else { return };
             let Some(d) = last.borrow().as_ref().map(LastDerivation::clone) else { return };
+            let loc_name = if location == 1 { "airlock" } else { "internal" };
             let result = save_derivation(&fs, &d, location);
             match result {
                 Ok(name) => {
-                    log::info!(
-                        "cb: save loc={} file={name} ok",
-                        if location == 1 { "airlock" } else { "internal" }
-                    );
+                    log::info!("cb: save loc={loc_name} file={name} ok");
                     ui.global::<Ui>().set_error("".into());
                 }
                 Err(e) => {
-                    log::warn!("cb: save err={e}");
+                    // Stay on the result screen — it renders Ui.error in
+                    // place of the hint line.
+                    log::warn!("cb: save loc={loc_name} err={e}");
                     ui.global::<Ui>().set_error(e.into());
-                    ui.global::<Ui>().set_screen(0);
                 }
             }
         });
@@ -192,6 +202,8 @@ struct LastDerivation {
     tag: &'static str,
     label: &'static str,
     index: u32,
+    /// None for network-agnostic outputs; Some(is_testnet) for WIF/XPRV.
+    testnet: Option<bool>,
     path: String,
     display: String,
     seedqr: Option<String>,
@@ -202,6 +214,7 @@ struct LastDerivation {
 fn derive_from_device_seed(
     app: Application,
     index: u32,
+    network: Network,
 ) -> Result<bip85_core::DerivedSecret, String> {
     let seed = Security::default()
         .seed()
@@ -213,7 +226,7 @@ fn derive_from_device_seed(
     // root instead, but GetSeed exposes only the base entropy.
     let root = Xprv::from_bip39_entropy(&entropy, "").map_err(|e| e.to_string())?;
     entropy.zeroize();
-    derive(&root, app, index).map_err(|e| e.to_string())
+    derive(&root, app, index, network).map_err(|e| e.to_string())
 }
 
 /// Mnemonics read better numbered; everything else is a single token.
@@ -257,14 +270,22 @@ fn save_derivation(fs: &Fs, d: &LastDerivation, location: i32) -> Result<String,
             return Err(err_msg(&e));
         }
     }
-    let name = format!("bip85-{}-i{}.txt", d.tag, d.index);
+    // Testnet files get their own names so they never collide with (or get
+    // mistaken for) the mainnet encoding of the same child.
+    let net_tag = if d.testnet == Some(true) { "-testnet" } else { "" };
+    let name = format!("bip85-{}{}-i{}.txt", d.tag, net_tag, d.index);
     let path = format!("{SAVE_DIR}/{name}");
     if fs.open_file(path.as_str(), loc, OpenFlags::READ_ONLY).is_ok() {
         return Err(format!("{name} already exists"));
     }
+    let network_line = match d.testnet {
+        Some(true) => "Network: Testnet\n",
+        Some(false) => "Network: Mainnet\n",
+        None => "",
+    };
     let mut text = format!(
-        "BIP-85 derived secret\nApplication: {}\nPath: {}\nIndex: {}\n\n{}\n",
-        d.label, d.path, d.index, d.display
+        "BIP-85 derived secret\nApplication: {}\nPath: {}\nIndex: {}\n{}\n{}\n",
+        d.label, d.path, d.index, network_line, d.display
     );
     if let Some(digits) = &d.seedqr {
         text.push_str(&format!("\nSeedQR: {digits}\n"));

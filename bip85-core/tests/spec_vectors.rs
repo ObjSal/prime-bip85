@@ -2,7 +2,7 @@
 //! bitcoin/bips bip-0085.mediawiki.
 
 use bip85_core::bip85::{derive, derive_entropy, Application};
-use bip85_core::Xprv;
+use bip85_core::{Network, Xprv};
 
 const MASTER: &str = "xprv9s21ZrQH143K2LBWUUQRFXhucrQqBpKdRRxNVq2zBqsx8HVqFk2uYo8kmbaLLHRdqtQpUm98uKfu3vca1LqdGhUtyoFnCNkfmXRyPXLjbKb";
 
@@ -37,7 +37,7 @@ fn case_2_raw_entropy() {
 
 #[test]
 fn bip39_12_words() {
-    let d = derive(&root(), Application::Bip39 { words: 12 }, 0).unwrap();
+    let d = derive(&root(), Application::Bip39 { words: 12 }, 0, Network::Mainnet).unwrap();
     assert_eq!(hex::encode(&d.entropy), "6250b68daf746d12a24d58b4787a714b");
     assert_eq!(
         d.display,
@@ -48,7 +48,7 @@ fn bip39_12_words() {
 
 #[test]
 fn bip39_18_words() {
-    let d = derive(&root(), Application::Bip39 { words: 18 }, 0).unwrap();
+    let d = derive(&root(), Application::Bip39 { words: 18 }, 0, Network::Mainnet).unwrap();
     assert_eq!(hex::encode(&d.entropy), "938033ed8b12698449d4bbca3c853c66b293ea1b1ce9d9dc");
     assert_eq!(
         d.display,
@@ -59,7 +59,7 @@ fn bip39_18_words() {
 
 #[test]
 fn bip39_24_words() {
-    let d = derive(&root(), Application::Bip39 { words: 24 }, 0).unwrap();
+    let d = derive(&root(), Application::Bip39 { words: 24 }, 0, Network::Mainnet).unwrap();
     assert_eq!(
         hex::encode(&d.entropy),
         "ae131e2312cdc61331542efe0d1077bac5ea803adf24b313a4f0e48e9c51f37f"
@@ -74,7 +74,7 @@ fn bip39_24_words() {
 
 #[test]
 fn hd_seed_wif() {
-    let d = derive(&root(), Application::Wif, 0).unwrap();
+    let d = derive(&root(), Application::Wif, 0, Network::Mainnet).unwrap();
     assert_eq!(
         hex::encode(&d.entropy),
         "7040bb53104f27367f317558e78a994ada7296c6fde36a364e5baf206e502bb1"
@@ -85,7 +85,7 @@ fn hd_seed_wif() {
 
 #[test]
 fn xprv_application() {
-    let d = derive(&root(), Application::Xprv, 0).unwrap();
+    let d = derive(&root(), Application::Xprv, 0, Network::Mainnet).unwrap();
     assert_eq!(
         hex::encode(&d.entropy[32..]),
         "ead0b33988a616cf6a497f1c169d9e92562604e38305ccd3fc96f2252c177682"
@@ -98,13 +98,44 @@ fn xprv_application() {
 
 #[test]
 fn hex_application() {
-    let d = derive(&root(), Application::Hex { num_bytes: 64 }, 0).unwrap();
+    let d = derive(&root(), Application::Hex { num_bytes: 64 }, 0, Network::Mainnet).unwrap();
     assert_eq!(
         d.display,
         "492db4698cf3b73a5a24998aa3e9d7fa96275d85724a91e71aa2d645442f8785\
          55d078fd1f1f67e368976f04137b1f7a0d19232136ca50c44614af72b5582a5c"
     );
     assert_eq!(d.path, "m/83696968'/128169'/64'/0'");
+}
+
+/// Testnet re-encodings of the spec vectors. BIP-85 has no testnet vectors
+/// (derivation is network-agnostic); these expected strings were computed
+/// with an independent Python base58check implementation from the same
+/// spec-pinned payloads (0xEF WIF prefix, 0x04358394 tprv version).
+#[test]
+fn testnet_wif() {
+    let d = derive(&root(), Application::Wif, 0, Network::Testnet).unwrap();
+    assert_eq!(
+        hex::encode(&d.entropy),
+        "7040bb53104f27367f317558e78a994ada7296c6fde36a364e5baf206e502bb1"
+    );
+    assert_eq!(d.display, "cRLuXpEtagka2NVmVtg6pcSdUFHp9pqkhCQSweYhQUWMwkdaaVsk");
+}
+
+#[test]
+fn testnet_tprv() {
+    let d = derive(&root(), Application::Xprv, 0, Network::Testnet).unwrap();
+    assert_eq!(
+        d.display,
+        "tprv8ZgxMBicQKsPdh5yFmJBEQgjf3oaE8YyyEgS7CnEHXyPe9eGtubocMTq2BdvXjP6E9smCHogUm5ywmbfWPPhpVS3tM2MZbTaCPoTB1Yq51L"
+    );
+}
+
+/// Mnemonics must be identical on every network.
+#[test]
+fn network_does_not_affect_mnemonics() {
+    let m = derive(&root(), Application::Bip39 { words: 12 }, 0, Network::Mainnet).unwrap();
+    let t = derive(&root(), Application::Bip39 { words: 12 }, 0, Network::Testnet).unwrap();
+    assert_eq!(m.display, t.display);
 }
 
 /// The device path: BIP-39 entropy in, root out. Uses the classic BIP-39
@@ -131,7 +162,7 @@ fn root_from_bip39_entropy() {
 #[test]
 fn seedqr_digits_for_derived_mnemonic() {
     // "girl mad pet ..." — girl=786, mad=1069, pet=1307 in the English list.
-    let d = derive(&root(), Application::Bip39 { words: 12 }, 0).unwrap();
+    let d = derive(&root(), Application::Bip39 { words: 12 }, 0, Network::Mainnet).unwrap();
     let digits = bip85_core::seedqr::seedqr_digits(&d.entropy).unwrap();
     assert_eq!(digits.len(), 48);
     assert!(digits.starts_with("078610691307"));

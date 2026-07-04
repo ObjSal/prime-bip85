@@ -183,6 +183,60 @@ export component AppWindow inherits Window {
                 }
             }
 
+            // Network applies only to the outputs that encode one (WIF,
+            // XPRV) — the row exists only while one of those is selected.
+            if Form.network-relevant: Rectangle {
+                height: 44px;
+                Text {
+                    x: 0;
+                    y: (parent.height - self.height) / 2;
+                    text: "Network";
+                    color: Theme.palette-foreground;
+                    font-family: "Montserrat";
+                    font-size: 20px;
+                }
+                Rectangle {
+                    x: parent.width - 240px;
+                    y: 0;
+                    width: 114px;
+                    height: 44px;
+                    border-radius: 22px;
+                    background: Form.network-index == 0 ? Theme.palette-surface : transparent;
+                    border-width: Form.network-index == 0 ? 2px : 1px;
+                    border-color: Form.network-index == 0 ? Theme.palette-primary : Theme.palette-border;
+                    Text {
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        text: "Mainnet";
+                        color: Theme.palette-foreground;
+                        font-family: "Montserrat";
+                        font-size: 17px;
+                        font-weight: Form.network-index == 0 ? 700 : 500;
+                    }
+                    TouchArea { clicked => { Form.network-index = 0; } }
+                }
+                Rectangle {
+                    x: parent.width - 114px;
+                    y: 0;
+                    width: 114px;
+                    height: 44px;
+                    border-radius: 22px;
+                    background: Form.network-index == 1 ? Theme.palette-surface : transparent;
+                    border-width: Form.network-index == 1 ? 2px : 1px;
+                    border-color: Form.network-index == 1 ? Theme.palette-danger : Theme.palette-border;
+                    Text {
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        text: "Testnet";
+                        color: Form.network-index == 1 ? Theme.palette-danger : Theme.palette-foreground;
+                        font-family: "Montserrat";
+                        font-size: 17px;
+                        font-weight: Form.network-index == 1 ? 700 : 500;
+                    }
+                    TouchArea { clicked => { Form.network-index = 1; } }
+                }
+            }
+
             if Ui.error != "": Text {
                 text: Ui.error;
                 color: Theme.palette-danger;
@@ -235,6 +289,15 @@ export component AppWindow inherits Window {
                 horizontal-alignment: center;
             }
 
+            if Derived.testnet: Text {
+                text: "TESTNET — not valid for mainnet coins";
+                color: Theme.palette-danger;
+                font-family: "Montserrat";
+                font-size: 16px;
+                font-weight: 700;
+                horizontal-alignment: center;
+            }
+
             Rectangle {
                 vertical-stretch: 1;
                 border-radius: 16px;
@@ -268,10 +331,11 @@ export component AppWindow inherits Window {
             }
 
             Text {
-                text: Derived.has-seedqr && Derived.show-qr
+                text: Ui.error != "" ? Ui.error
+                    : Derived.has-seedqr && Derived.show-qr
                     ? "SeedQR — scan with any SeedQR-aware wallet"
                     : "Anyone who sees this secret can spend from it";
-                color: Theme.palette-muted;
+                color: Ui.error != "" ? Theme.palette-danger : Theme.palette-muted;
                 font-family: "Montserrat";
                 font-size: 14px;
                 horizontal-alignment: center;
@@ -282,7 +346,7 @@ export component AppWindow inherits Window {
                 spacing: 12px;
                 SecondaryAction {
                     text: "Back";
-                    clicked => { Derived.show-qr = false; Ui.screen = 0; }
+                    clicked => { Derived.show-qr = false; Ui.error = ""; Ui.screen = 0; }
                 }
                 SecondaryAction {
                     text: Derived.show-qr ? "Text" : "QR";

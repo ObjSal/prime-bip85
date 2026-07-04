@@ -13,6 +13,16 @@ pub mod seedqr;
 pub use bip32::Xprv;
 pub use bip85::{Application, DerivedSecret};
 
+/// Serialization network for the outputs that encode one (WIF, XPRV).
+/// BIP-85 derivation itself is network-agnostic — the same path yields the
+/// same child key everywhere; only the display encoding changes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Network {
+    #[default]
+    Mainnet,
+    Testnet,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Base58/version/length problem parsing an xprv string.

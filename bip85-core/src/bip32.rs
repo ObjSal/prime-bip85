@@ -8,9 +8,10 @@ use k256::Scalar;
 use sha2::Sha512;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use crate::Error;
+use crate::{Error, Network};
 
-const XPRV_VERSION: [u8; 4] = [0x04, 0x88, 0xAD, 0xE4]; // mainnet xprv
+const XPRV_VERSION: [u8; 4] = [0x04, 0x88, 0xAD, 0xE4]; // mainnet "xprv…"
+const TPRV_VERSION: [u8; 4] = [0x04, 0x35, 0x83, 0x94]; // testnet "tprv…"
 pub const HARDENED: u32 = 0x8000_0000;
 
 /// A private extended key. Only the fields BIP-85 needs; depth/fingerprint/
@@ -69,10 +70,19 @@ impl Xprv {
         })
     }
 
-    /// Serialize to the base58check `xprv...` form.
+    /// Serialize to the base58check `xprv...` (mainnet) form.
     pub fn to_string(&self) -> String {
+        self.to_string_net(Network::Mainnet)
+    }
+
+    /// Serialize with the given network's version bytes (`xprv…`/`tprv…`).
+    pub fn to_string_net(&self, network: Network) -> String {
+        let version = match network {
+            Network::Mainnet => XPRV_VERSION,
+            Network::Testnet => TPRV_VERSION,
+        };
         let mut raw = Vec::with_capacity(78);
-        raw.extend_from_slice(&XPRV_VERSION);
+        raw.extend_from_slice(&version);
         raw.push(self.depth);
         raw.extend_from_slice(&self.parent_fingerprint);
         raw.extend_from_slice(&self.child_number.to_be_bytes());

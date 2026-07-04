@@ -8,7 +8,7 @@ use sha2::Sha512;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::bip32::{valid_scalar, Xprv};
-use crate::Error;
+use crate::{Error, Network};
 
 pub const PURPOSE: u32 = 83696968; // "SEED" on a phone keypad
 
@@ -58,7 +58,14 @@ fn path_string(path: &[u32]) -> String {
     s
 }
 
-pub fn derive(root: &Xprv, app: Application, index: u32) -> Result<DerivedSecret, Error> {
+/// `network` affects only the WIF/XPRV encodings; mnemonic and hex outputs
+/// are identical on every network.
+pub fn derive(
+    root: &Xprv,
+    app: Application,
+    index: u32,
+    network: Network,
+) -> Result<DerivedSecret, Error> {
     let path: Vec<u32> = match app {
         Application::Bip39 { words } => {
             if !matches!(words, 12 | 18 | 24) {
@@ -76,12 +83,17 @@ pub fn derive(root: &Xprv, app: Application, index: u32) -> Result<DerivedSecret
         }
     };
     let mut full = derive_entropy(root, &path)?;
-    let result = build(app, &full, &path);
+    let result = build(app, &full, &path, network);
     full.zeroize();
     result
 }
 
-fn build(app: Application, full: &[u8; 64], path: &[u32]) -> Result<DerivedSecret, Error> {
+fn build(
+    app: Application,
+    full: &[u8; 64],
+    path: &[u32],
+    network: Network,
+) -> Result<DerivedSecret, Error> {
     let (display, entropy) = match app {
         Application::Bip39 { words } => {
             let bytes = words as usize * 4 / 3; // 12→16, 18→24, 24→32
@@ -91,9 +103,12 @@ fn build(app: Application, full: &[u8; 64], path: &[u32]) -> Result<DerivedSecre
         Application::Wif => {
             let key: [u8; 32] = full[..32].try_into().unwrap();
             valid_scalar(&key)?;
-            // Compressed-pubkey mainnet WIF: 0x80 || key || 0x01.
+            // Compressed-pubkey WIF: version || key || 0x01.
             let mut raw = Vec::with_capacity(34);
-            raw.push(0x80);
+            raw.push(match network {
+                Network::Mainnet => 0x80,
+                Network::Testnet => 0xEF,
+            });
             raw.extend_from_slice(&key);
             raw.push(0x01);
             let wif = bs58::encode(&raw).with_check().into_string();
@@ -111,7 +126,7 @@ fn build(app: Application, full: &[u8; 64], path: &[u32]) -> Result<DerivedSecre
                 chain_code: full[..32].try_into().unwrap(),
                 key,
             };
-            (xprv.to_string(), full.to_vec())
+            (xprv.to_string_net(network), full.to_vec())
         }
         Application::Hex { num_bytes } => {
             let entropy = full[..num_bytes as usize].to_vec();

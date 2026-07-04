@@ -1,16 +1,19 @@
 //! Host-side BIP-85 derivation, for cross-checking what the device shows:
-//!   cargo run -p bip85-core --example derive -- <entropy-hex> <app> <index>
+//!   cargo run -p bip85-core --example derive -- <entropy-hex> <app> <index> [testnet]
 //! where <app> is words12|words24|wif|xprv|hex32.
 
 use bip85_core::bip85::{derive, Application};
-use bip85_core::Xprv;
+use bip85_core::{Network, Xprv};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let (entropy_hex, app, index) = match args.as_slice() {
-        [_, e, a, i] => (e.clone(), a.clone(), i.parse::<u32>().expect("index")),
+    let (entropy_hex, app, index, network) = match args.as_slice() {
+        [_, e, a, i] => (e.clone(), a.clone(), i.parse::<u32>().expect("index"), Network::Mainnet),
+        [_, e, a, i, t] if t == "testnet" => {
+            (e.clone(), a.clone(), i.parse::<u32>().expect("index"), Network::Testnet)
+        }
         _ => {
-            eprintln!("usage: derive <entropy-hex> <words12|words24|wif|xprv|hex32> <index>");
+            eprintln!("usage: derive <entropy-hex> <words12|words24|wif|xprv|hex32> <index> [testnet]");
             std::process::exit(2);
         }
     };
@@ -27,7 +30,7 @@ fn main() {
         other => panic!("unknown app {other}"),
     };
     let root = Xprv::from_bip39_entropy(&entropy, "").expect("root");
-    let d = derive(&root, app, index).expect("derive");
+    let d = derive(&root, app, index, network).expect("derive");
     println!("path:    {}", d.path);
     println!("display: {}", d.display);
 }

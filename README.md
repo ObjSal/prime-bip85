@@ -35,6 +35,13 @@ Derivations are **standards-compliant**: the same mnemonic in Sparrow,
 **no-passphrase** BIP-39 root (the KeyOS `GetSeed` API exposes base entropy
 only), so wallets that apply BIP-85 under an active passphrase will differ.
 
+**Network**: derivation is network-agnostic, but WIF and XPRV are
+network-*encoded* — so a Mainnet/Testnet toggle appears only when one of
+those two is selected (mainnet default). Testnet outputs use the `0xEF`
+WIF prefix / `tprv` version bytes, are banner-labeled TESTNET on the result
+screen, and save under `-testnet` filenames. The chain choice changes only
+the encodings of the same derived child.
+
 ## Saving derivations
 
 <p align="center">
