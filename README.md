@@ -30,6 +30,14 @@ Mnemonics can be shown as a **SeedQR** (SeedSigner standard format) for
 direct import into any SeedQR-aware wallet; WIF/XPRV/HEX render as plain
 QRs of the text.
 
+**Fingerprints**: the home screen shows the master seed's BIP-32
+fingerprint (the same "xfp" Sparrow would display), and each
+BIP-39/XPRV child shows *its* fingerprint on the result screen and in saved
+files — for mnemonics that's the fingerprint the restored wallet will
+display, so you can verify an import at a glance. WIF/HEX aren't BIP-32
+nodes and have none. Fingerprint math is pinned to BIP-32's own test
+vector (`3442193e`).
+
 Derivations are **standards-compliant**: the same mnemonic in Sparrow,
 `python-bip85`, or any BIP-85 wallet yields the same children. The root is the
 **no-passphrase** BIP-39 root (the KeyOS `GetSeed` API exposes base entropy

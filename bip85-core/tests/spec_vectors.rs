@@ -153,6 +153,35 @@ fn network_only_affects_wif_and_xprv() {
     }
 }
 
+/// Fingerprint math pinned by BIP-32's own test vector 1: seed
+/// 000102030405060708090a0b0c0d0e0f → master identifier starts 3442193e.
+#[test]
+fn bip32_fingerprint_vector() {
+    let seed: Vec<u8> = (0..16).collect();
+    let root = Xprv::from_seed(&seed).unwrap();
+    assert_eq!(root.fingerprint_hex().unwrap(), "3442193e");
+}
+
+/// A BIP-39 child's fingerprint must equal the fingerprint a wallet computes
+/// after restoring from the displayed words; the XPRV child's must equal the
+/// fingerprint of the string it displays.
+#[test]
+fn child_fingerprints_are_self_consistent() {
+    let d = derive(&root(), Application::Bip39 { words: 12 }, 0, Network::Mainnet).unwrap();
+    let restored = Xprv::from_bip39_entropy(&d.entropy, "").unwrap();
+    assert_eq!(d.fingerprint.as_deref(), Some(restored.fingerprint_hex().unwrap().as_str()));
+
+    let x = derive(&root(), Application::Xprv, 0, Network::Mainnet).unwrap();
+    let parsed = Xprv::parse(&x.display).unwrap();
+    assert_eq!(x.fingerprint.as_deref(), Some(parsed.fingerprint_hex().unwrap().as_str()));
+
+    assert!(derive(&root(), Application::Wif, 0, Network::Mainnet).unwrap().fingerprint.is_none());
+    assert!(derive(&root(), Application::Hex { num_bytes: 32 }, 0, Network::Mainnet)
+        .unwrap()
+        .fingerprint
+        .is_none());
+}
+
 /// The device path: BIP-39 entropy in, root out. Uses the classic BIP-39
 /// "TREZOR" test vector (all-zero 16-byte entropy → "abandon ... about") to
 /// pin mnemonic_to_seed + from_seed end to end.

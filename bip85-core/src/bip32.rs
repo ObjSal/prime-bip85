@@ -3,9 +3,11 @@
 //! just scalar addition mod n via k256.
 
 use hmac::{Hmac, Mac};
+use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::elliptic_curve::PrimeField;
-use k256::Scalar;
-use sha2::Sha512;
+use k256::{ProjectivePoint, Scalar};
+use ripemd::Ripemd160;
+use sha2::{Digest, Sha256, Sha512};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{Error, Network};
@@ -90,6 +92,25 @@ impl Xprv {
         raw.push(0);
         raw.extend_from_slice(&self.key);
         bs58::encode(raw).with_check().into_string()
+    }
+
+    /// BIP-32 key fingerprint: first 4 bytes of HASH160 of this node's
+    /// compressed public key — the "xfp" wallets like Sparrow
+    /// display and PSBTs carry in key origins. Not a secret.
+    pub fn fingerprint(&self) -> Result<[u8; 4], Error> {
+        let k = scalar(&self.key)?;
+        if k == Scalar::ZERO {
+            return Err(Error::InvalidKey);
+        }
+        let point = (ProjectivePoint::GENERATOR * k).to_affine();
+        let compressed = point.to_encoded_point(true);
+        let h160 = Ripemd160::digest(Sha256::digest(compressed.as_bytes()));
+        Ok(h160[..4].try_into().unwrap())
+    }
+
+    /// [`Self::fingerprint`] as the conventional 8-char lowercase hex.
+    pub fn fingerprint_hex(&self) -> Result<String, Error> {
+        Ok(self.fingerprint()?.iter().map(|b| format!("{b:02x}")).collect())
     }
 
     /// Hardened CKDpriv. `index` is the child number *without* the hardened

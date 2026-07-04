@@ -30,7 +30,11 @@ fn main() {
         other => panic!("unknown app {other}"),
     };
     let root = Xprv::from_bip39_entropy(&entropy, "").expect("root");
+    println!("master fp: {}", root.fingerprint_hex().expect("fingerprint"));
     let d = derive(&root, app, index, network).expect("derive");
     println!("path:    {}", d.path);
     println!("display: {}", d.display);
+    if let Some(fp) = &d.fingerprint {
+        println!("child fp: {fp}");
+    }
 }

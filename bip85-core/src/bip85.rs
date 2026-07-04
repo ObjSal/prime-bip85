@@ -35,6 +35,12 @@ pub struct DerivedSecret {
     pub entropy: Vec<u8>,
     /// Full derivation path, e.g. "m/83696968'/39'/0'/12'/0'".
     pub path: String,
+    /// BIP-32 fingerprint of the child where one is defined: for BIP-39
+    /// children, the fingerprint of the child mnemonic's own (no-passphrase)
+    /// root — what a wallet restored from those words will display; for the
+    /// XPRV application, the fingerprint of the encoded node. None for
+    /// WIF/HEX, which aren't BIP-32 nodes.
+    pub fingerprint: Option<String>,
 }
 
 /// Raw 64-byte BIP-85 entropy for an arbitrary sub-path (`path` WITHOUT the
@@ -94,11 +100,12 @@ fn build(
     path: &[u32],
     network: Network,
 ) -> Result<DerivedSecret, Error> {
-    let (display, entropy) = match app {
+    let (display, entropy, fingerprint) = match app {
         Application::Bip39 { words } => {
             let bytes = words as usize * 4 / 3; // 12→16, 18→24, 24→32
             let entropy = full[..bytes].to_vec();
-            (crate::bip39::entropy_to_mnemonic(&entropy)?, entropy)
+            let fp = Xprv::from_bip39_entropy(&entropy, "")?.fingerprint_hex()?;
+            (crate::bip39::entropy_to_mnemonic(&entropy)?, entropy, Some(fp))
         }
         Application::Wif => {
             let key: [u8; 32] = full[..32].try_into().unwrap();
@@ -113,7 +120,7 @@ fn build(
             raw.push(0x01);
             let wif = bs58::encode(&raw).with_check().into_string();
             raw.zeroize();
-            (wif, key.to_vec())
+            (wif, key.to_vec(), None)
         }
         Application::Xprv => {
             // Left 256 bits chain code, right 256 bits private key; a root.
@@ -126,13 +133,14 @@ fn build(
                 chain_code: full[..32].try_into().unwrap(),
                 key,
             };
-            (xprv.to_string_net(network), full.to_vec())
+            let fp = xprv.fingerprint_hex()?;
+            (xprv.to_string_net(network), full.to_vec(), Some(fp))
         }
         Application::Hex { num_bytes } => {
             let entropy = full[..num_bytes as usize].to_vec();
             let hex: String = entropy.iter().map(|b| format!("{b:02x}")).collect();
-            (hex, entropy)
+            (hex, entropy, None)
         }
     };
-    Ok(DerivedSecret { display, entropy, path: path_string(path) })
+    Ok(DerivedSecret { display, entropy, path: path_string(path), fingerprint })
 }

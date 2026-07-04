@@ -39,6 +39,16 @@ fn app_main(cx: AppContext, ui: AppWindow) {
     let fs = cx.fs.clone(); // Arc<Fs>; &fs deref-coerces to &Fs below
     let ui_weak = ui.as_weak();
 
+    // Master fingerprint on the home screen (xfp is public metadata — it's
+    // what coordinators show — so display and logging are fine).
+    match master_fingerprint() {
+        Ok(fp) => {
+            log::info!("master fingerprint={fp}");
+            ui.global::<Ui>().set_master_fp(fp.into());
+        }
+        Err(e) => log::warn!("master fingerprint unavailable: {e}"),
+    }
+
     // Remember what the result screen is showing so save() can write it
     // without re-deriving (and without parking the secret in more places
     // than the UI already does).
@@ -69,8 +79,13 @@ fn app_main(cx: AppContext, ui: AppWindow) {
                     } else {
                         ""
                     };
+                    let fp_log = secret
+                        .fingerprint
+                        .as_ref()
+                        .map(|fp| format!(" fp={fp}"))
+                        .unwrap_or_default();
                     log::info!(
-                        "cb: derive app={tag} index={child_index}{net_log} ok path={}",
+                        "cb: derive app={tag} index={child_index}{net_log}{fp_log} ok path={}",
                         secret.path
                     );
                     let seedqr_digits = matches!(app, Application::Bip39 { .. })
@@ -82,6 +97,7 @@ fn app_main(cx: AppContext, ui: AppWindow) {
                     d.set_app_label(format!("{label} · #{child_index}").into());
                     d.set_testnet(testnet);
                     d.set_path(secret.path.as_str().into());
+                    d.set_fingerprint(secret.fingerprint.clone().unwrap_or_default().into());
                     d.set_display(display_text(app, &secret.display).into());
                     d.set_has_seedqr(seedqr_digits.is_some());
                     d.set_show_qr(false);
@@ -93,6 +109,7 @@ fn app_main(cx: AppContext, ui: AppWindow) {
                         testnet: network_encoded.then_some(testnet),
                         path: secret.path.clone(),
                         display: secret.display.clone(),
+                        fingerprint: secret.fingerprint.clone(),
                         seedqr: seedqr_digits,
                     });
                     ui.global::<Ui>().set_screen(1);
@@ -206,7 +223,21 @@ struct LastDerivation {
     testnet: Option<bool>,
     path: String,
     display: String,
+    /// BIP-32 fingerprint of the child, where defined (BIP-39/XPRV).
+    fingerprint: Option<String>,
     seedqr: Option<String>,
+}
+
+/// Fingerprint of the device master seed's (no-passphrase) BIP-32 root.
+fn master_fingerprint() -> Result<String, String> {
+    let seed = Security::default()
+        .seed()
+        .map_err(|_| "seed unavailable".to_string())?
+        .ok_or_else(|| "no wallet seed on this device".to_string())?;
+    let mut entropy = seed.to_vec();
+    let root = Xprv::from_bip39_entropy(&entropy, "").map_err(|e| e.to_string())?;
+    entropy.zeroize();
+    root.fingerprint_hex().map_err(|e| e.to_string())
 }
 
 /// GetSeed → BIP39 root → BIP-85 child. The device seed entropy is zeroized
@@ -283,9 +314,14 @@ fn save_derivation(fs: &Fs, d: &LastDerivation, location: i32) -> Result<String,
         Some(false) => "Network: Mainnet\n",
         None => "",
     };
+    let fp_line = d
+        .fingerprint
+        .as_ref()
+        .map(|fp| format!("Fingerprint: {fp}\n"))
+        .unwrap_or_default();
     let mut text = format!(
-        "BIP-85 derived secret\nApplication: {}\nPath: {}\nIndex: {}\n{}\n{}\n",
-        d.label, d.path, d.index, network_line, d.display
+        "BIP-85 derived secret\nApplication: {}\nPath: {}\nIndex: {}\n{}{}\n{}\n",
+        d.label, d.path, d.index, network_line, fp_line, d.display
     );
     if let Some(digits) = &d.seedqr {
         text.push_str(&format!("\nSeedQR: {digits}\n"));

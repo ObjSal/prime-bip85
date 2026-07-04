@@ -143,6 +143,14 @@ export component AppWindow inherits Window {
                 horizontal-alignment: center;
                 wrap: word-wrap;
             }
+            if Ui.master-fp != "": Text {
+                text: "Master fingerprint  " + Ui.master-fp;
+                color: Theme.palette-primary;
+                font-family: "Montserrat";
+                font-size: 15px;
+                font-weight: 600;
+                horizontal-alignment: center;
+            }
 
             OptionRow { label: "BIP-39 · 12 words"; selected: Form.app-index == 0; tapped => { Form.app-index = 0; } }
             OptionRow { label: "BIP-39 · 24 words"; selected: Form.app-index == 1; tapped => { Form.app-index = 1; } }
@@ -286,6 +294,15 @@ export component AppWindow inherits Window {
                 color: Theme.palette-muted;
                 font-family: "Montserrat";
                 font-size: 15px;
+                horizontal-alignment: center;
+            }
+
+            if Derived.fingerprint != "": Text {
+                text: "Fingerprint  " + Derived.fingerprint;
+                color: Theme.palette-primary;
+                font-family: "Montserrat";
+                font-size: 15px;
+                font-weight: 600;
                 horizontal-alignment: center;
             }
 

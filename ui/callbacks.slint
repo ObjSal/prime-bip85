@@ -5,6 +5,8 @@ export global Ui {
     in-out property <int> screen: 0;
     in-out property <bool> busy: false;
     in-out property <string> error: "";
+    // BIP-32 fingerprint of the device master seed's root ("" until known).
+    in-out property <string> master-fp: "";
 }
 
 // Derive form state (indices are read by Rust on derive()).
@@ -23,6 +25,8 @@ export global Derived {
     in-out property <string> app-label;
     in-out property <bool> testnet: false;
     in-out property <string> path;
+    // Child fingerprint; "" for WIF/HEX which aren't BIP-32 nodes.
+    in-out property <string> fingerprint;
     in-out property <string> display;
     in-out property <bool> has-seedqr: false;
     in-out property <bool> show-qr: false;
