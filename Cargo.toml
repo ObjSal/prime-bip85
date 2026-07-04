@@ -1,0 +1,40 @@
+[package]
+name = "prime-bip85"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [".", "bip85-core"]
+
+# KeyOS's own getrandom override (vendored in vendor/getrandom, see its
+# Cargo.toml header): on --cfg keyos (hardware) builds it sources entropy
+# from the os TRNG server; on host/simulator builds it behaves like stock
+# getrandom 0.2. Without this, the armv7a-unknown-xous-elf build fails with
+# "target is not supported" / unresolved `imp` errors.
+[patch.crates-io]
+getrandom = { path = "vendor/getrandom" }
+
+# Debug builds (what `foundation sim` produces) would make the EC scalar math
+# and PBKDF2 sluggish; optimize just those crates (paper-wallet pattern).
+[profile.dev.package.k256]
+opt-level = 3
+[profile.dev.package.crypto-bigint]
+opt-level = 3
+[profile.dev.package.sha2]
+opt-level = 3
+
+[dependencies]
+bip85-core = { path = "bip85-core" }
+# KeyOS security API (vendored — see vendor/security-api/Cargo.toml header):
+# provides GetSeed for BIP-85 root derivation.
+security = { path = "vendor/security-api" }
+zeroize = "1"
+log = "0.4"
+log-server = { package = "xous-api-log", path = "/Users/user/.foundation/sdk/current/lib/keyos/xous/api/log" }
+server = { path = "/Users/user/.foundation/sdk/current/lib/keyos/server" }
+slint-keyos-platform = { path = "/Users/user/.foundation/sdk/current/lib/keyos/slint-keyos-platform/runtime" }
+foundation-themes = { path = "/Users/user/.foundation/sdk/current/lib/keyos/sdk/crates/foundation-themes" }
+
+[build-dependencies]
+foundation-themes = { path = "/Users/user/.foundation/sdk/current/lib/keyos/sdk/crates/foundation-themes" }
+slint-keyos-platform-build = { path = "/Users/user/.foundation/sdk/current/lib/keyos/slint-keyos-platform/build" }

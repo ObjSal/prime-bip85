@@ -1,0 +1,18 @@
+# UI-free BIP-85 library — all derivation logic lives here so it can be
+# tested on the host (`cargo test -p bip85-core`) against the official
+# BIP-85 spec vectors, mirroring the wallet-core/pgp-core pattern.
+[package]
+name = "bip85-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hmac = { version = "0.12", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+pbkdf2 = "0.12"
+k256 = { version = "0.13", default-features = false, features = ["arithmetic", "std"] }
+bs58 = { version = "0.5", features = ["check"] }
+zeroize = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+hex = "0.4"

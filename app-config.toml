@@ -1,0 +1,26 @@
+# Foundation application configuration
+app-name = "prime-bip85"
+friendly-app-name = "BIP-85"
+launcher-app-name = "BIP-85"
+description = "Derive BIP-85 deterministic child seeds from the device master seed: BIP-39 mnemonics, WIF, XPRV and raw hex, with SeedQR display."
+icon = "resources/icon.svg"
+app-id = "0x4022d9d11b31bf18c039e4ea21870cc9"
+version = "0.1.0"
+min-keyos-version = "1.0.0"
+
+[publisher]
+name = ""
+contact-email = ""
+support-url = ""
+
+[permissions]
+template = ["gui-app", "fs-generic", "fs-access"]
+# Saved derivations default to internal (User) storage; Airlock is the
+# explicit "export over USB" opt-in. Nothing mounts Airlock in the hosted
+# simulator, so mount lazily and format only after a failed mount
+# (paper-wallet pattern, see its NOTES.md).
+"os/fs" = ["MountAirlock", "FormatAirlock"]
+# BIP-85 derives from the BIP32 root of the wallet's master seed, so this
+# app needs the real seed entropy (GetSeed), not the per-app HMAC seed
+# (GetAppSeed). PIN-gated on hardware; kernel-attested app identity.
+"os/security" = ["GetSeed"]

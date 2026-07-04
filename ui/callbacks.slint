@@ -1,0 +1,45 @@
+// Globals shared between Rust and the UI. Screen map:
+// 0 = derive form, 1 = result, 2 = saved-files browser, 3 = saved-file viewer.
+
+export global Ui {
+    in-out property <int> screen: 0;
+    in-out property <bool> busy: false;
+    in-out property <string> error: "";
+}
+
+// Derive form state (indices are read by Rust on derive()).
+export global Form {
+    // 0 = 12 words, 1 = 24 words, 2 = WIF, 3 = XPRV, 4 = HEX (32 bytes)
+    in-out property <int> app-index: 0;
+    in-out property <int> child-index: 0;
+}
+
+// Last derived secret, for the result screen.
+export global Derived {
+    in-out property <string> app-label;
+    in-out property <string> path;
+    in-out property <string> display;
+    in-out property <bool> has-seedqr: false;
+    in-out property <bool> show-qr: false;
+    in-out property <image> qr;
+}
+
+export struct SavedFile {
+    name: string,
+    location: string, // "Internal" | "Airlock"
+}
+
+export global Saved {
+    in-out property <[SavedFile]> files;
+    in-out property <string> viewer-name;
+    in-out property <string> viewer-location;
+    in-out property <string> viewer-text;
+}
+
+export global Callbacks {
+    callback derive();
+    callback save(int);            // 0 = internal (User), 1 = Airlock
+    callback refresh-saved();
+    callback open-saved(string, string);   // name, location
+    callback delete-saved();               // deletes the file open in the viewer
+}

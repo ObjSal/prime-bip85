@@ -1,0 +1,523 @@
+import { Theme, UISize, ButtonStyleProps, ButtonSizeProps, ButtonVariant, ButtonState, ButtonSize } from "@ui/theme.slint";
+import { Callbacks, Ui, Form, Derived, Saved, SavedFile } from "callbacks.slint";
+import { Button } from "@ui/button.slint";
+
+export { Callbacks, Ui, Form, Derived, Saved, Theme, ButtonStyleProps, ButtonSizeProps, ButtonVariant, ButtonState, ButtonSize }
+
+component PrimaryAction inherits Button {
+    background: Theme.palette-primary;
+    foreground: #ffffff;
+    border-color: transparent;
+    border-width: 0px;
+    font-weight: 600;
+    font-family: "Montserrat";
+    button-opacity: self.disabled ? 0.5 : 1.0;
+    touch-expansion: 4px;
+    font-size: 20px;
+    padding-horizontal: 20px;
+    padding-vertical: 12px;
+    border-radius: 24px;
+}
+
+component SecondaryAction inherits Button {
+    background: Theme.palette-surface;
+    foreground: Theme.palette-foreground;
+    border-color: Theme.palette-border;
+    border-width: 1px;
+    font-weight: 600;
+    font-family: "Montserrat";
+    touch-expansion: 4px;
+    font-size: 20px;
+    padding-horizontal: 20px;
+    padding-vertical: 12px;
+    border-radius: 24px;
+}
+
+// Selectable row (application picker / save location). Raw TouchArea: the
+// SDK IconButton drops taps once laid out, plain TouchArea is reliable.
+component OptionRow inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    callback tapped();
+    height: 56px;
+    border-radius: 12px;
+    background: selected ? Theme.palette-surface : transparent;
+    border-width: selected ? 2px : 1px;
+    border-color: selected ? Theme.palette-primary : Theme.palette-border;
+
+    // Radio dot — positioned explicitly; layout cross-axis doesn't center.
+    Rectangle {
+        x: 16px;
+        y: (parent.height - self.height) / 2;
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        border-width: 2px;
+        border-color: selected ? Theme.palette-primary : Theme.palette-muted;
+        background: transparent;
+        Rectangle {
+            visible: selected;
+            x: 4px;
+            y: 4px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: Theme.palette-primary;
+        }
+    }
+    Text {
+        x: 52px;
+        y: (parent.height - self.height) / 2;
+        text: label;
+        color: Theme.palette-foreground;
+        font-family: "Montserrat";
+        font-size: 20px;
+        font-weight: selected ? 700 : 500;
+    }
+    TouchArea {
+        clicked => { tapped(); }
+    }
+}
+
+// Small square tap target for the index stepper.
+component StepBtn inherits Rectangle {
+    in property <string> glyph;
+    callback tapped();
+    width: 56px;
+    height: 48px;
+    border-radius: 12px;
+    background: Theme.palette-surface;
+    border-width: 1px;
+    border-color: Theme.palette-border;
+    Text {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        text: glyph;
+        color: Theme.palette-foreground;
+        font-size: 26px;
+        font-weight: 700;
+    }
+    TouchArea {
+        clicked => { tapped(); }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "BIP-85";
+    preferred-width: 480px;
+    preferred-height: 800px;
+    background: Theme.palette-background;
+
+    property <bool> save-modal: false;
+    property <int> save-location: 0; // 0 internal, 1 airlock
+    property <bool> confirm-delete: false;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: Theme.palette-background;
+
+        // ------------------------------------------------ screen 0: derive
+        if Ui.screen == 0: VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            padding-left: 24px;
+            padding-right: 24px;
+            padding-top: 24px + UISize.control-center-status-bar-height;
+            padding-bottom: 24px;
+            spacing: 12px;
+
+            Text {
+                text: "BIP-85";
+                color: Theme.palette-foreground;
+                font-family: "Montserrat";
+                font-size: 28px;
+                font-weight: 700;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: "Deterministic child seeds from this device's master seed";
+                color: Theme.palette-muted;
+                font-family: "Montserrat";
+                font-size: 15px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+
+            OptionRow { label: "BIP-39 · 12 words"; selected: Form.app-index == 0; tapped => { Form.app-index = 0; } }
+            OptionRow { label: "BIP-39 · 24 words"; selected: Form.app-index == 1; tapped => { Form.app-index = 1; } }
+            OptionRow { label: "WIF (Bitcoin Core hdseed)"; selected: Form.app-index == 2; tapped => { Form.app-index = 2; } }
+            OptionRow { label: "XPRV (BIP-32 root)"; selected: Form.app-index == 3; tapped => { Form.app-index = 3; } }
+            OptionRow { label: "HEX · 32 bytes"; selected: Form.app-index == 4; tapped => { Form.app-index = 4; } }
+
+            // Index stepper — no text entry, so the on-screen keyboard never appears.
+            Rectangle {
+                height: 48px;
+                Text {
+                    x: 0;
+                    y: (parent.height - self.height) / 2;
+                    text: "Child index";
+                    color: Theme.palette-foreground;
+                    font-family: "Montserrat";
+                    font-size: 20px;
+                }
+                StepBtn {
+                    x: parent.width - 132px;
+                    glyph: "−";
+                    tapped => { if (Form.child-index > 0) { Form.child-index -= 1; } }
+                }
+                Text {
+                    x: parent.width - 132px - 60px;
+                    y: (parent.height - self.height) / 2;
+                    width: 52px;
+                    text: Form.child-index;
+                    color: Theme.palette-primary;
+                    font-size: 24px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                }
+                StepBtn {
+                    x: parent.width - 56px;
+                    glyph: "+";
+                    tapped => { if (Form.child-index < 99) { Form.child-index += 1; } }
+                }
+            }
+
+            if Ui.error != "": Text {
+                text: Ui.error;
+                color: Theme.palette-danger;
+                font-family: "Montserrat";
+                font-size: 16px;
+                wrap: word-wrap;
+                horizontal-alignment: center;
+            }
+
+            Rectangle {} // spacer
+
+            HorizontalLayout {
+                spacing: 12px;
+                SecondaryAction {
+                    text: "Saved";
+                    clicked => { Callbacks.refresh-saved(); Ui.screen = 2; }
+                }
+                PrimaryAction {
+                    text: Ui.busy ? "Deriving…" : "Derive";
+                    disabled: Ui.busy;
+                    full-width: true;
+                    clicked => { Ui.error = ""; Callbacks.derive(); }
+                }
+            }
+        }
+
+        // ------------------------------------------------ screen 1: result
+        if Ui.screen == 1: VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            padding-left: 24px;
+            padding-right: 24px;
+            padding-top: 24px + UISize.control-center-status-bar-height;
+            padding-bottom: 24px;
+            spacing: 12px;
+
+            Text {
+                text: Derived.app-label;
+                color: Theme.palette-foreground;
+                font-family: "Montserrat";
+                font-size: 24px;
+                font-weight: 700;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: Derived.path;
+                color: Theme.palette-muted;
+                font-family: "Montserrat";
+                font-size: 15px;
+                horizontal-alignment: center;
+            }
+
+            Rectangle {
+                vertical-stretch: 1;
+                border-radius: 16px;
+                background: Theme.palette-surface;
+                border-width: 1px;
+                border-color: Theme.palette-border;
+
+                if !Derived.show-qr: Flickable {
+                    x: 16px;
+                    y: 16px;
+                    width: parent.width - 32px;
+                    height: parent.height - 32px;
+                    viewport-height: secret-text.height;
+                    secret-text := Text {
+                        width: parent.width;
+                        text: Derived.display;
+                        color: Theme.palette-foreground;
+                        font-size: 20px;
+                        font-weight: 600;
+                        wrap: char-wrap;
+                    }
+                }
+                if Derived.show-qr: Image {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    width: min(parent.width, parent.height) - 48px;
+                    height: self.width;
+                    source: Derived.qr;
+                    image-rendering: pixelated;
+                }
+            }
+
+            Text {
+                text: Derived.has-seedqr && Derived.show-qr
+                    ? "SeedQR — scan with any SeedQR-aware wallet"
+                    : "Anyone who sees this secret can spend from it";
+                color: Theme.palette-muted;
+                font-family: "Montserrat";
+                font-size: 14px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+                SecondaryAction {
+                    text: "Back";
+                    clicked => { Derived.show-qr = false; Ui.screen = 0; }
+                }
+                SecondaryAction {
+                    text: Derived.show-qr ? "Text" : "QR";
+                    clicked => { Derived.show-qr = !Derived.show-qr; }
+                }
+                PrimaryAction {
+                    text: "Save…";
+                    full-width: true;
+                    clicked => { save-location = 0; save-modal = true; }
+                }
+            }
+        }
+
+        // ------------------------------------------------ screen 2: browser
+        if Ui.screen == 2: VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            padding-left: 24px;
+            padding-right: 24px;
+            padding-top: 24px + UISize.control-center-status-bar-height;
+            padding-bottom: 24px;
+            spacing: 12px;
+
+            Text {
+                text: "Saved derivations";
+                color: Theme.palette-foreground;
+                font-family: "Montserrat";
+                font-size: 24px;
+                font-weight: 700;
+                horizontal-alignment: center;
+            }
+
+            if Saved.files.length == 0: Text {
+                text: "Nothing saved yet";
+                color: Theme.palette-muted;
+                font-family: "Montserrat";
+                font-size: 17px;
+                horizontal-alignment: center;
+            }
+
+            Flickable {
+                vertical-stretch: 1;
+                // Rows are fixed-height; computing from the count avoids a
+                // viewport-height <-> content-height binding loop.
+                viewport-height: Saved.files.length * 64px;
+                file-list := VerticalLayout {
+                    width: parent.width;
+                    spacing: 8px;
+                    alignment: start;
+                    for f in Saved.files: Rectangle {
+                        height: 56px;
+                        border-radius: 12px;
+                        background: Theme.palette-surface;
+                        border-width: 1px;
+                        border-color: Theme.palette-border;
+                        Text {
+                            x: 16px;
+                            y: (parent.height - self.height) / 2;
+                            width: parent.width - 120px;
+                            text: f.name;
+                            color: Theme.palette-foreground;
+                            font-family: "Montserrat";
+                            font-size: 17px;
+                            font-weight: 600;
+                            overflow: elide;
+                        }
+                        Text {
+                            x: parent.width - 90px;
+                            y: (parent.height - self.height) / 2;
+                            text: f.location;
+                            color: Theme.palette-muted;
+                            font-family: "Montserrat";
+                            font-size: 14px;
+                        }
+                        TouchArea {
+                            clicked => { Callbacks.open-saved(f.name, f.location); }
+                        }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                height: 56px;
+                SecondaryAction {
+                    text: "Back";
+                    full-width: true;
+                    clicked => { Ui.screen = 0; }
+                }
+            }
+        }
+
+        // ------------------------------------------------ screen 3: viewer
+        if Ui.screen == 3: VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            padding-left: 24px;
+            padding-right: 24px;
+            padding-top: 24px + UISize.control-center-status-bar-height;
+            padding-bottom: 24px;
+            spacing: 12px;
+
+            Text {
+                text: Saved.viewer-name;
+                color: Theme.palette-foreground;
+                font-family: "Montserrat";
+                font-size: 22px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                overflow: elide;
+            }
+            Text {
+                text: Saved.viewer-location;
+                color: Theme.palette-muted;
+                font-family: "Montserrat";
+                font-size: 15px;
+                horizontal-alignment: center;
+            }
+
+            Rectangle {
+                vertical-stretch: 1;
+                border-radius: 16px;
+                background: Theme.palette-surface;
+                border-width: 1px;
+                border-color: Theme.palette-border;
+                Flickable {
+                    x: 16px;
+                    y: 16px;
+                    width: parent.width - 32px;
+                    height: parent.height - 32px;
+                    viewport-height: viewer-text.height;
+                    viewer-text := Text {
+                        width: parent.width;
+                        text: Saved.viewer-text;
+                        color: Theme.palette-foreground;
+                        font-size: 17px;
+                        wrap: char-wrap;
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                height: 56px;
+                spacing: 12px;
+                SecondaryAction {
+                    text: "Back";
+                    full-width: true;
+                    clicked => { confirm-delete = false; Ui.screen = 2; }
+                }
+                SecondaryAction {
+                    text: confirm-delete ? "Confirm delete" : "Delete";
+                    foreground: Theme.palette-danger;
+                    border-color: Theme.palette-danger;
+                    clicked => {
+                        if (confirm-delete) {
+                            confirm-delete = false;
+                            Callbacks.delete-saved();
+                        } else {
+                            confirm-delete = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------- save modal (nested in root:
+        // direct Window children never render). Anchored near the top so all
+        // controls sit at stable positions for UI automation.
+        if save-modal: Rectangle {
+            width: parent.width;
+            height: parent.height;
+            background: #00000088;
+            TouchArea {} // swallow taps behind the sheet
+
+            Rectangle {
+                x: 24px;
+                y: 90px;
+                width: parent.width - 48px;
+                height: 330px;
+                border-radius: 20px;
+                background: Theme.palette-background;
+                border-width: 1px;
+                border-color: Theme.palette-border;
+
+                VerticalLayout {
+                    padding: 20px;
+                    spacing: 14px;
+
+                    Text {
+                        text: "Save derivation";
+                        color: Theme.palette-foreground;
+                        font-family: "Montserrat";
+                        font-size: 22px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                    }
+
+                    OptionRow {
+                        label: "Internal storage";
+                        selected: save-location == 0;
+                        tapped => { save-location = 0; }
+                    }
+                    OptionRow {
+                        label: "Airlock (USB-visible)";
+                        selected: save-location == 1;
+                        tapped => { save-location = 1; }
+                    }
+
+                    Text {
+                        text: save-location == 1
+                            ? "⚠ Airlock files are exposed to any USB host. This is a spendable secret."
+                            : "Kept in this app's private storage on the device.";
+                        color: save-location == 1 ? Theme.palette-danger : Theme.palette-muted;
+                        font-family: "Montserrat";
+                        font-size: 14px;
+                        wrap: word-wrap;
+                    }
+
+                    HorizontalLayout {
+                        spacing: 12px;
+                        SecondaryAction {
+                            text: "Cancel";
+                            full-width: true;
+                            clicked => { save-modal = false; }
+                        }
+                        PrimaryAction {
+                            text: "Save";
+                            full-width: true;
+                            clicked => {
+                                save-modal = false;
+                                Callbacks.save(save-location);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
