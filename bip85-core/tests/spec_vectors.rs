@@ -130,12 +130,27 @@ fn testnet_tprv() {
     );
 }
 
-/// Mnemonics must be identical on every network.
+/// Every output except WIF/XPRV must be identical on every network — the
+/// UI's network toggle only renders for those two, so this pins that the
+/// others genuinely have no network dimension.
 #[test]
-fn network_does_not_affect_mnemonics() {
-    let m = derive(&root(), Application::Bip39 { words: 12 }, 0, Network::Mainnet).unwrap();
-    let t = derive(&root(), Application::Bip39 { words: 12 }, 0, Network::Testnet).unwrap();
-    assert_eq!(m.display, t.display);
+fn network_only_affects_wif_and_xprv() {
+    for app in [
+        Application::Bip39 { words: 12 },
+        Application::Bip39 { words: 24 },
+        Application::Hex { num_bytes: 32 },
+    ] {
+        let m = derive(&root(), app, 0, Network::Mainnet).unwrap();
+        let t = derive(&root(), app, 0, Network::Testnet).unwrap();
+        assert_eq!(m.display, t.display, "{app:?} must be network-invariant");
+        assert_eq!(m.entropy, t.entropy);
+    }
+    for app in [Application::Wif, Application::Xprv] {
+        let m = derive(&root(), app, 0, Network::Mainnet).unwrap();
+        let t = derive(&root(), app, 0, Network::Testnet).unwrap();
+        assert_ne!(m.display, t.display, "{app:?} must be network-encoded");
+        assert_eq!(m.entropy, t.entropy, "same child key, different serialization");
+    }
 }
 
 /// The device path: BIP-39 entropy in, root out. Uses the classic BIP-39
