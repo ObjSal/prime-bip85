@@ -10,7 +10,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::bip32::{valid_scalar, Xprv};
 use crate::{Error, Network};
 
-pub const PURPOSE: u32 = 83696968; // "SEED" on a phone keypad
+pub const PURPOSE: u32 = 83696968; // ASCII "SEED": S=83, E=69, E=69, D=68
 
 /// The BIP-85 applications this crate implements.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
