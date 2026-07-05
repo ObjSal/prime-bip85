@@ -25,6 +25,13 @@ Fully offline, like everything on Prime.
 | XPRV | `m/83696968'/32'/i'` | BIP-32 root for coordinators |
 | HEX · 32 bytes | `m/83696968'/128169'/32'/i'` | raw entropy for anything else |
 
+Reading the path: `83696968` is BIP-85's registered purpose number — the
+word **SEED** as concatenated decimal ASCII (S=83, E=69, E=69, D=68), the
+same convention as BIP-44's `44'`. The `'` marks hardened derivation, and
+for mnemonics the middle elements are `39'` (BIP-39 application) / `0'`
+(English) / word count. So `m/83696968'/39'/0'/12'/0'` reads
+"BIP-85 → BIP-39 → English → 12 words → child #0".
+
 The child index (0–99) steps with +/− buttons — no on-screen keyboard.
 Mnemonics can be shown as a **SeedQR** (SeedSigner standard format) for
 direct import into any SeedQR-aware wallet; WIF/XPRV/HEX render as plain
