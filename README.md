@@ -119,3 +119,26 @@ Beyond the standard GUI/filesystem templates, the app requests:
   derivation is rooted in. PIN-gated and kernel-attested on hardware.
 - `"os/fs" = ["MountAirlock", "FormatAirlock"]` — the lazy Airlock
   mount/format-recovery needed by the hosted simulator's export path.
+
+## License & disclaimer
+
+Licensed under the GNU General Public License v3.0 or later — see [COPYING](COPYING). Sections 15–17 of that license disclaim all warranty and limit liability; the notes below restate that in plain language.
+
+This is experimental software and it has **not been independently audited**.
+It is provided **"as is", without warranty of any kind**, express or implied,
+including but not limited to the warranties of merchantability, fitness for a
+particular purpose, and non-infringement.
+
+**Use it at your own risk.** To the maximum extent permitted by law, in no
+event shall the authors, copyright holders, or contributors be liable for any
+claim, damages, or other liability — including, without limitation,
+**loss of bitcoin or other funds, loss of keys or seeds, or loss of data** — whether in an action of contract, tort, or
+otherwise, arising from, out of, or in connection with this software or its
+use.
+
+Nothing in this project is financial, investment, legal, or tax advice. You
+are solely responsible for verifying addresses, amounts, fees, and backups
+before moving funds, and for complying with the laws of your jurisdiction.
+Test on test networks, or with amounts you can afford to lose, first.
+
+Derived child seeds are **real, spendable secrets**. Anyone who sees a derived mnemonic, WIF, XPRV, or SeedQR can take any funds it controls — treat every derivation with the same care as the device master seed it came from.
