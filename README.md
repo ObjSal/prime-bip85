@@ -20,7 +20,7 @@ BIP-85 turns your Passport Prime's master seed into a family tree of independent
 | WIF | a Bitcoin Core `sethdseed` key |
 | XPRV | a BIP-32 root for coordinators |
 | HEX · 32 / 64 bytes | raw entropy for anything else |
-| Password · 21 chars | a base64 password (~126 bits) for anything with a login |
+| Password · 20–86 chars | a base64 password (default 21 ≈ 126 bits) for anything with a login |
 
 ## Features
 
@@ -30,6 +30,7 @@ BIP-85 turns your Passport Prime's master seed into a family tree of independent
 - **10,000 children per application** — indexes 0–9999 via ±1/±100 stepper buttons; no keyboard needed.
 - **Mainnet & testnet encodings** — WIF and XPRV can be encoded for testnet (clearly banner-labeled).
 - **Save derivations on your terms** — to private Internal storage by default, or to the USB-visible Airlock behind an explicit warning, with a built-in browser to view and delete saved files.
+- **Bare-seed root, always** — children derive from the master seed itself; BIP-39 passphrases never enter the derivation (KeyOS exposes base entropy only), so a wallet that folds an active BIP-39 passphrase into its BIP-85 children will derive a different family. The derive screen says so, right above the button.
 - **Secrets stay secret** — nothing sensitive ever appears in logs, and everything happens on a device with no network stack.
 
 > The screenshots show children of the **all-zero test seed** ("abandon … art") in the simulator — publicly known vectors, never funded.

@@ -19,6 +19,10 @@ export global Form {
     // network-encoded outputs, WIF and XPRV.
     in-out property <int> network-index: 0;
     out property <bool> network-relevant: app-index == 3 || app-index == 4;
+    // Password length, 20–86 (BIP-85 spec range; 21, the default, is
+    // the spec's canonical example length).
+    in-out property <int> pwd-len: 21;
+    out property <bool> pwd-relevant: app-index == 7;
 }
 
 // Last derived secret, for the result screen.

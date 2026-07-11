@@ -210,7 +210,7 @@ export component AppWindow inherits Window {
                     : Form.app-index == 4 ? "BIP-32 root extended private key"
                     : Form.app-index == 5 ? "Raw entropy · 32 bytes"
                     : Form.app-index == 6 ? "Raw entropy · 64 bytes"
-                    : "Deterministic password · base64, 21 chars";
+                    : "Deterministic password · base64 · length 20–86";
                 color: Theme.palette-muted;
                 font-family: "Montserrat";
                 font-size: 15px;
@@ -265,6 +265,57 @@ export component AppWindow inherits Window {
                     glyph: "+100";
                     glyph-size: 14px;
                     tapped => { Form.child-index = min(9999, Form.child-index + 100); }
+                }
+            }
+
+            // Password length — BIP-85 spec range 20–86 (default 21, the
+            // spec's canonical example). Rendered only for passwords, in
+            // the slot the network row uses for WIF/XPRV.
+            if Form.pwd-relevant: Rectangle {
+                height: 48px;
+                Text {
+                    x: 0;
+                    y: (parent.height - self.height) / 2;
+                    text: "Length";
+                    color: Theme.palette-foreground;
+                    font-family: "Montserrat";
+                    font-size: 20px;
+                }
+                StepBtn {
+                    x: parent.width - 268px;
+                    width: 52px;
+                    glyph: "−10";
+                    glyph-size: 14px;
+                    tapped => { Form.pwd-len = max(20, Form.pwd-len - 10); }
+                }
+                StepBtn {
+                    x: parent.width - 210px;
+                    width: 44px;
+                    glyph: "−";
+                    tapped => { if (Form.pwd-len > 20) { Form.pwd-len -= 1; } }
+                }
+                Text {
+                    x: parent.width - 162px;
+                    y: (parent.height - self.height) / 2;
+                    width: 56px;
+                    text: Form.pwd-len;
+                    color: Theme.palette-primary;
+                    font-size: 22px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                }
+                StepBtn {
+                    x: parent.width - 102px;
+                    width: 44px;
+                    glyph: "+";
+                    tapped => { if (Form.pwd-len < 86) { Form.pwd-len += 1; } }
+                }
+                StepBtn {
+                    x: parent.width - 52px;
+                    width: 52px;
+                    glyph: "+10";
+                    glyph-size: 14px;
+                    tapped => { Form.pwd-len = min(86, Form.pwd-len + 10); }
                 }
             }
 
@@ -332,6 +383,18 @@ export component AppWindow inherits Window {
             }
 
             Rectangle {} // spacer
+
+            // The BIP-85 root here is always the bare master seed — KeyOS
+            // exposes base entropy only, so a BIP-39 passphrase (a wallet-app
+            // concept on Prime) never enters the derivation.
+            Text {
+                text: "Derives from the bare master seed — BIP-39 passphrases never apply";
+                color: Theme.palette-muted;
+                font-family: "Montserrat";
+                font-size: 13px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
 
             HorizontalLayout {
                 spacing: 12px;

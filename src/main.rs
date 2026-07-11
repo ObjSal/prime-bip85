@@ -30,7 +30,7 @@ fn app_for_index(i: i32) -> Option<(&'static str, Application, &'static str)> {
         4 => Some(("XPRV (BIP-32 root)", Application::Xprv, "xprv")),
         5 => Some(("HEX · 32 bytes", Application::Hex { num_bytes: 32 }, "hex32")),
         6 => Some(("HEX · 64 bytes", Application::Hex { num_bytes: 64 }, "hex64")),
-        7 => Some(("Password · 21 chars", Application::Pwd { len: 21 }, "pwd")),
+        7 => Some(("Password", Application::Pwd { len: 21 }, "pwd")),
         _ => None,
     }
 }
@@ -68,6 +68,15 @@ fn app_main(cx: AppContext, ui: AppWindow) {
             let form = ui.global::<Form>();
             let (app_index, child_index) = (form.get_app_index(), form.get_child_index());
             let Some((label, app, tag)) = app_for_index(app_index) else { return };
+            // Passwords take the UI-chosen length (BIP-85 spec range 20–86;
+            // default 21 = the spec's canonical example length).
+            let (label, app) = match app {
+                Application::Pwd { .. } => {
+                    let len = form.get_pwd_len().clamp(20, 86) as u32;
+                    (format!("Password · {len} chars"), Application::Pwd { len })
+                }
+                _ => (label.to_string(), app),
+            };
             // Network only exists for the outputs that encode one.
             let network_encoded = matches!(app, Application::Wif | Application::Xprv);
             let testnet = network_encoded && form.get_network_index() == 1;
@@ -109,7 +118,12 @@ fn app_main(cx: AppContext, ui: AppWindow) {
                     d.set_show_qr(false);
                     d.set_qr(qr_image(qr_payload));
                     *last.borrow_mut() = Some(LastDerivation {
-                        tag,
+                        // Password filenames carry the length (pwd21, pwd40…)
+                        // so different lengths of the same index never collide.
+                        file_tag: match app {
+                            Application::Pwd { len } => format!("pwd{len}"),
+                            _ => tag.to_string(),
+                        },
                         label,
                         index: child_index as u32,
                         testnet: network_encoded.then_some(testnet),
@@ -222,8 +236,8 @@ fn app_main(cx: AppContext, ui: AppWindow) {
 /// What save() writes; mirrors the result screen.
 #[derive(Clone)]
 struct LastDerivation {
-    tag: &'static str,
-    label: &'static str,
+    file_tag: String,
+    label: String,
     index: u32,
     /// None for network-agnostic outputs; Some(is_testnet) for WIF/XPRV.
     testnet: Option<bool>,
@@ -310,7 +324,7 @@ fn save_derivation(fs: &Fs, d: &LastDerivation, location: i32) -> Result<String,
     // Testnet files get their own names so they never collide with (or get
     // mistaken for) the mainnet encoding of the same child.
     let net_tag = if d.testnet == Some(true) { "-testnet" } else { "" };
-    let name = format!("bip85-{}{}-i{}.txt", d.tag, net_tag, d.index);
+    let name = format!("bip85-{}{}-i{}.txt", d.file_tag, net_tag, d.index);
     let path = format!("{SAVE_DIR}/{name}");
     if fs.open_file(path.as_str(), loc, OpenFlags::READ_ONLY).is_ok() {
         return Err(format!("{name} already exists"));
