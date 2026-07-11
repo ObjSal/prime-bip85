@@ -155,6 +155,32 @@ fn cross_implementation_check() {
     }
 }
 
+/// Some wallets fold an ACTIVE BIP-39 passphrase into BIP-85 derivation
+/// (verified live against an independent implementation, 2026-07-11:
+/// passphrase "TREZOR" flipped its XFP to 912816D4 and changed every
+/// BIP-85 child). The library
+/// reproduces the wrapped root when given the passphrase — the values below
+/// are that implementation's own post-passphrase output. The device app always
+/// passes "" because KeyOS `GetSeed` exposes base entropy only, so the app
+/// matches those wallets with NO passphrase active; this test documents both
+/// halves of that behavior.
+#[test]
+fn passphrase_wrap_equivalence() {
+    let entropy =
+        hex::decode("faf8c43d8835d20aef178a530bb658071a5252b722ba910a4143d9010ebfded9").unwrap();
+    let wrapped = Xprv::from_bip39_entropy(&entropy, "TREZOR").unwrap();
+    assert_eq!(wrapped.fingerprint_hex().unwrap(), "912816d4");
+    let d = derive(&wrapped, Application::Bip39 { words: 12 }, 0, Network::Mainnet).unwrap();
+    assert_eq!(
+        d.display,
+        "all web avoid random priority jeans argue coach cattle hero cart expect"
+    );
+
+    // No passphrase -> the base root the device app (GetSeed + "") uses.
+    let base = Xprv::from_bip39_entropy(&entropy, "").unwrap();
+    assert_eq!(base.fingerprint_hex().unwrap(), "0f056943");
+}
+
 /// Testnet re-encodings of the spec vectors. BIP-85 has no testnet vectors
 /// (derivation is network-agnostic); these expected strings were computed
 /// with an independent Python base58check implementation from the same
