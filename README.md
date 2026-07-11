@@ -1,4 +1,4 @@
-# BIP-85 — a Passport Prime app
+# <img src="resources/icon.svg" alt="" width="42" align="top" /> BIP-85 — a Passport Prime app
 
 A **[BIP-85](https://github.com/bitcoin/bips/blob/master/bip-0085.mediawiki)
 deterministic child-seed generator** for Foundation's **Passport Prime**,
