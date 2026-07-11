@@ -32,12 +32,6 @@ BIP-85 turns your Passport Prime's master seed into a family tree of independent
 - **Save derivations on your terms** — to private Internal storage by default, or to the USB-visible Airlock behind an explicit warning, with a built-in browser to view and delete saved files.
 - **Secrets stay secret** — nothing sensitive ever appears in logs, and everything happens on a device with no network stack.
 
-<p align="center">
-  <img src="screenshots/save-modal.png" alt="Save modal — internal default, Airlock opt-in" width="280">
-  &nbsp;
-  <img src="screenshots/browser.png" alt="Saved-derivations browser" width="280">
-</p>
-
 > The screenshots show children of the **all-zero test seed** ("abandon … art") in the simulator — publicly known vectors, never funded.
 
 ## Get it running
