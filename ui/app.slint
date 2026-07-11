@@ -79,9 +79,35 @@ component OptionRow inherits Rectangle {
     }
 }
 
+// Compact selectable chip for the application grid (2 columns × 4 rows —
+// eight full-width OptionRows would overflow the 800px screen).
+component OptionChip inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    callback tapped();
+    height: 48px;
+    border-radius: 12px;
+    background: selected ? Theme.palette-surface : transparent;
+    border-width: selected ? 2px : 1px;
+    border-color: selected ? Theme.palette-primary : Theme.palette-border;
+    Text {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        text: label;
+        color: Theme.palette-foreground;
+        font-family: "Montserrat";
+        font-size: 19px;
+        font-weight: selected ? 700 : 500;
+    }
+    TouchArea {
+        clicked => { tapped(); }
+    }
+}
+
 // Small square tap target for the index stepper.
 component StepBtn inherits Rectangle {
     in property <string> glyph;
+    in property <length> glyph-size: 26px;
     callback tapped();
     width: 56px;
     height: 48px;
@@ -94,7 +120,7 @@ component StepBtn inherits Rectangle {
         y: (parent.height - self.height) / 2;
         text: glyph;
         color: Theme.palette-foreground;
-        font-size: 26px;
+        font-size: glyph-size;
         font-weight: 700;
     }
     TouchArea {
@@ -152,13 +178,48 @@ export component AppWindow inherits Window {
                 horizontal-alignment: center;
             }
 
-            OptionRow { label: "BIP-39 · 12 words"; selected: Form.app-index == 0; tapped => { Form.app-index = 0; } }
-            OptionRow { label: "BIP-39 · 24 words"; selected: Form.app-index == 1; tapped => { Form.app-index = 1; } }
-            OptionRow { label: "WIF (Bitcoin Core hdseed)"; selected: Form.app-index == 2; tapped => { Form.app-index = 2; } }
-            OptionRow { label: "XPRV (BIP-32 root)"; selected: Form.app-index == 3; tapped => { Form.app-index = 3; } }
-            OptionRow { label: "HEX · 32 bytes"; selected: Form.app-index == 4; tapped => { Form.app-index = 4; } }
+            // Application grid — the eight BIP-85 applications, 2 columns x 4 rows.
+            VerticalLayout {
+                spacing: 8px;
+                HorizontalLayout {
+                    spacing: 8px;
+                    OptionChip { label: "12 words"; selected: Form.app-index == 0; tapped => { Form.app-index = 0; } }
+                    OptionChip { label: "18 words"; selected: Form.app-index == 1; tapped => { Form.app-index = 1; } }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    OptionChip { label: "24 words"; selected: Form.app-index == 2; tapped => { Form.app-index = 2; } }
+                    OptionChip { label: "WIF"; selected: Form.app-index == 3; tapped => { Form.app-index = 3; } }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    OptionChip { label: "XPRV"; selected: Form.app-index == 4; tapped => { Form.app-index = 4; } }
+                    OptionChip { label: "HEX · 32"; selected: Form.app-index == 5; tapped => { Form.app-index = 5; } }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    OptionChip { label: "HEX · 64"; selected: Form.app-index == 6; tapped => { Form.app-index = 6; } }
+                    OptionChip { label: "Password"; selected: Form.app-index == 7; tapped => { Form.app-index = 7; } }
+                }
+            }
 
-            // Index stepper — no text entry, so the on-screen keyboard never appears.
+            // One-line description of the selected application.
+            Text {
+                text: Form.app-index <= 2 ? "BIP-39 mnemonic · English wordlist"
+                    : Form.app-index == 3 ? "Private key for Bitcoin Core sethdseed"
+                    : Form.app-index == 4 ? "BIP-32 root extended private key"
+                    : Form.app-index == 5 ? "Raw entropy · 32 bytes"
+                    : Form.app-index == 6 ? "Raw entropy · 64 bytes"
+                    : "Deterministic password · base64, 21 chars";
+                color: Theme.palette-muted;
+                font-family: "Montserrat";
+                font-size: 15px;
+                horizontal-alignment: center;
+            }
+
+            // Index stepper — no text entry, so the on-screen keyboard never
+            // appears. ±100 buttons make the full 0–9999 index range
+            // reachable without a keyboard.
             Rectangle {
                 height: 48px;
                 Text {
@@ -170,24 +231,40 @@ export component AppWindow inherits Window {
                     font-size: 20px;
                 }
                 StepBtn {
-                    x: parent.width - 132px;
+                    x: parent.width - 268px;
+                    width: 52px;
+                    glyph: "−100";
+                    glyph-size: 14px;
+                    tapped => { Form.child-index = max(0, Form.child-index - 100); }
+                }
+                StepBtn {
+                    x: parent.width - 210px;
+                    width: 44px;
                     glyph: "−";
                     tapped => { if (Form.child-index > 0) { Form.child-index -= 1; } }
                 }
                 Text {
-                    x: parent.width - 132px - 60px;
+                    x: parent.width - 162px;
                     y: (parent.height - self.height) / 2;
-                    width: 52px;
+                    width: 56px;
                     text: Form.child-index;
                     color: Theme.palette-primary;
-                    font-size: 24px;
+                    font-size: 22px;
                     font-weight: 700;
                     horizontal-alignment: center;
                 }
                 StepBtn {
-                    x: parent.width - 56px;
+                    x: parent.width - 102px;
+                    width: 44px;
                     glyph: "+";
-                    tapped => { if (Form.child-index < 99) { Form.child-index += 1; } }
+                    tapped => { if (Form.child-index < 9999) { Form.child-index += 1; } }
+                }
+                StepBtn {
+                    x: parent.width - 52px;
+                    width: 52px;
+                    glyph: "+100";
+                    glyph-size: 14px;
+                    tapped => { Form.child-index = min(9999, Form.child-index + 100); }
                 }
             }
 
@@ -351,7 +428,9 @@ export component AppWindow inherits Window {
                 text: Ui.error != "" ? Ui.error
                     : Derived.has-seedqr && Derived.show-qr
                     ? "SeedQR — scan with any SeedQR-aware wallet"
-                    : "Anyone who sees this secret can spend from it";
+                    : Derived.spendable
+                    ? "Anyone who sees this secret can spend from it"
+                    : "Anyone who sees this password can use it";
                 color: Ui.error != "" ? Theme.palette-danger : Theme.palette-muted;
                 font-family: "Montserrat";
                 font-size: 14px;

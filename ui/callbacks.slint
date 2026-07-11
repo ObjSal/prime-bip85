@@ -11,13 +11,14 @@ export global Ui {
 
 // Derive form state (indices are read by Rust on derive()).
 export global Form {
-    // 0 = 12 words, 1 = 24 words, 2 = WIF, 3 = XPRV, 4 = HEX (32 bytes)
+    // 0 = 12 words, 1 = 18 words, 2 = 24 words, 3 = WIF, 4 = XPRV,
+    // 5 = HEX 32, 6 = HEX 64, 7 = Password (21-char base64).
     in-out property <int> app-index: 0;
     in-out property <int> child-index: 0;
     // 0 = mainnet, 1 = testnet. Only meaningful (and only shown) for the
     // network-encoded outputs, WIF and XPRV.
     in-out property <int> network-index: 0;
-    out property <bool> network-relevant: app-index == 2 || app-index == 3;
+    out property <bool> network-relevant: app-index == 3 || app-index == 4;
 }
 
 // Last derived secret, for the result screen.
@@ -30,6 +31,8 @@ export global Derived {
     in-out property <string> display;
     in-out property <bool> has-seedqr: false;
     in-out property <bool> show-qr: false;
+    // False for passwords — they gate accounts, they don't hold coins.
+    in-out property <bool> spendable: true;
     in-out property <image> qr;
 }
 

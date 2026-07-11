@@ -18,14 +18,19 @@ type Fs = fs::FileSystem<fs_permissions::FileSystemPermissions>;
 
 const SAVE_DIR: &str = "/bip85";
 
-/// (label, application, log tag, filename tag) for each Form.app-index row.
+/// (label, application, log tag, filename tag) for each Form.app-index chip.
+/// Together these cover the full BIP-85 application surface (cross-verified
+/// against an independent implementation — see bip85-core/tests/spec_vectors.rs).
 fn app_for_index(i: i32) -> Option<(&'static str, Application, &'static str)> {
     match i {
         0 => Some(("BIP-39 · 12 words", Application::Bip39 { words: 12 }, "words12")),
-        1 => Some(("BIP-39 · 24 words", Application::Bip39 { words: 24 }, "words24")),
-        2 => Some(("WIF (Bitcoin Core hdseed)", Application::Wif, "wif")),
-        3 => Some(("XPRV (BIP-32 root)", Application::Xprv, "xprv")),
-        4 => Some(("HEX · 32 bytes", Application::Hex { num_bytes: 32 }, "hex32")),
+        1 => Some(("BIP-39 · 18 words", Application::Bip39 { words: 18 }, "words18")),
+        2 => Some(("BIP-39 · 24 words", Application::Bip39 { words: 24 }, "words24")),
+        3 => Some(("WIF (Bitcoin Core hdseed)", Application::Wif, "wif")),
+        4 => Some(("XPRV (BIP-32 root)", Application::Xprv, "xprv")),
+        5 => Some(("HEX · 32 bytes", Application::Hex { num_bytes: 32 }, "hex32")),
+        6 => Some(("HEX · 64 bytes", Application::Hex { num_bytes: 64 }, "hex64")),
+        7 => Some(("Password · 21 chars", Application::Pwd { len: 21 }, "pwd")),
         _ => None,
     }
 }
@@ -100,6 +105,7 @@ fn app_main(cx: AppContext, ui: AppWindow) {
                     d.set_fingerprint(secret.fingerprint.clone().unwrap_or_default().into());
                     d.set_display(display_text(app, &secret.display).into());
                     d.set_has_seedqr(seedqr_digits.is_some());
+                    d.set_spendable(!matches!(app, Application::Pwd { .. }));
                     d.set_show_qr(false);
                     d.set_qr(qr_image(qr_payload));
                     *last.borrow_mut() = Some(LastDerivation {

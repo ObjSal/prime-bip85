@@ -2,7 +2,7 @@
 
 **Bitcoin · Seeds** — one backup to rule them all: derive every wallet you'll ever hand out from the seed you already protect.
 
-BIP-85 turns your Passport Prime's master seed into a family tree of independent secrets. Need a seed for a hot wallet, a gift, a test device, a friend getting started? Derive a child — a fresh 12- or 24-word mnemonic, a WIF key, an XPRV, or raw entropy — and hand it out knowing that no child can ever reveal its siblings or the parent. Lose everything, restore your one seed phrase, and every child you ever derived comes back, identical. Fully offline, like everything on Prime.
+BIP-85 turns your Passport Prime's master seed into a family tree of independent secrets. Need a seed for a hot wallet, a gift, a test device, a friend getting started — or a password that can never be forgotten? Derive a child — a fresh 12-, 18-, or 24-word mnemonic, a WIF key, an XPRV, raw entropy, or a strong password — and hand it out knowing that no child can ever reveal its siblings or the parent. Lose everything, restore your one seed phrase, and every child you ever derived comes back, identical. Fully offline, like everything on Prime.
 
 <p align="center">
   <img src="screenshots/home.png" alt="Home — application picker and index stepper" width="280">
@@ -16,18 +16,18 @@ BIP-85 turns your Passport Prime's master seed into a family tree of independent
 
 | Application | Output |
 |---|---|
-| BIP-39 · 12 words | a mnemonic for another wallet |
-| BIP-39 · 24 words | a mnemonic for another wallet |
+| BIP-39 · 12 / 18 / 24 words | a mnemonic for another wallet |
 | WIF | a Bitcoin Core `sethdseed` key |
 | XPRV | a BIP-32 root for coordinators |
-| HEX · 32 bytes | raw entropy for anything else |
+| HEX · 32 / 64 bytes | raw entropy for anything else |
+| Password · 21 chars | a base64 password (~126 bits) for anything with a login |
 
 ## Features
 
-- **Standards-compliant by proof** — pinned to the official [BIP-85](https://github.com/bitcoin/bips/blob/master/bip-0085.mediawiki) test vectors; the same child in Sparrow, `python-bip85`, or any BIP-85 wallet yields the same secret.
+- **Standards-compliant by proof** — pinned to the official [BIP-85](https://github.com/bitcoin/bips/blob/master/bip-0085.mediawiki) test vectors, and every application cross-verified byte-for-byte against an independent BIP-85 implementation: same seed in, same child out, on all eight derivation types.
 - **SeedQR out** — show any mnemonic as a SeedQR (SeedSigner standard) for direct camera import into any SeedQR-aware wallet; WIF/XPRV/HEX render as plain QRs.
 - **Fingerprints for verification** — the home screen shows your master seed's BIP-32 fingerprint, and every BIP-39/XPRV child shows *its* fingerprint — so you can confirm a restored wallet imported the right child at a glance.
-- **100 children per application** — the index steps with +/− buttons; no keyboard needed.
+- **10,000 children per application** — indexes 0–9999 via ±1/±100 stepper buttons; no keyboard needed.
 - **Mainnet & testnet encodings** — WIF and XPRV can be encoded for testnet (clearly banner-labeled).
 - **Save derivations on your terms** — to private Internal storage by default, or to the USB-visible Airlock behind an explicit warning, with a built-in browser to view and delete saved files.
 - **Secrets stay secret** — nothing sensitive ever appears in logs, and everything happens on a device with no network stack.

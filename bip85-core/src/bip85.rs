@@ -23,13 +23,18 @@ pub enum Application {
     Xprv,
     /// 128169': raw hex entropy, 16–64 bytes.
     Hex { num_bytes: u32 },
+    /// 707764' ("pwd" in ASCII): base64 password, 20–86 chars. The full
+    /// 64-byte entropy is base64-encoded and truncated to `len` chars
+    /// (21 chars ≈ 126 bits — the spec's canonical example length).
+    Pwd { len: u32 },
 }
 
 /// A derived child secret: the display string plus the raw entropy behind it.
 /// Zeroized on drop.
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct DerivedSecret {
-    /// Human-facing result: mnemonic words, WIF, xprv string, or hex.
+    /// Human-facing result: mnemonic words, WIF, xprv string, hex, or
+    /// base64 password.
     pub display: String,
     /// The truncated derived entropy (mnemonic entropy, WIF key bytes, ...).
     pub entropy: Vec<u8>,
@@ -54,6 +59,28 @@ pub fn derive_entropy(root: &Xprv, path: &[u32]) -> Result<[u8; 64], Error> {
         .expect("hmac accepts any key length");
     mac.update(&key.key);
     Ok(mac.finalize().into_bytes().into())
+}
+
+/// RFC 4648 standard-alphabet base64, hand-rolled to keep the dependency
+/// surface of a seed-handling crate minimal. Padding included for
+/// correctness, though the PWD slice never reaches it.
+fn base64(data: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        let n = (u32::from(chunk[0]) << 16)
+            | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
+            | u32::from(*chunk.get(2).unwrap_or(&0));
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(ALPHABET[(n >> (18 - 6 * i)) as usize & 63] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
 }
 
 fn path_string(path: &[u32]) -> String {
@@ -86,6 +113,12 @@ pub fn derive(
                 return Err(Error::BadParam);
             }
             vec![128169, num_bytes, index]
+        }
+        Application::Pwd { len } => {
+            if !(20..=86).contains(&len) {
+                return Err(Error::BadParam);
+            }
+            vec![707764, len, index]
         }
     };
     let mut full = derive_entropy(root, &path)?;
@@ -140,6 +173,14 @@ fn build(
             let entropy = full[..num_bytes as usize].to_vec();
             let hex: String = entropy.iter().map(|b| format!("{b:02x}")).collect();
             (hex, entropy, None)
+        }
+        Application::Pwd { len } => {
+            // Spec: base64 the WHOLE 64 bytes, then slice the first `len`
+            // characters (padding can never land inside the slice).
+            let mut b64 = base64(full);
+            let pwd = b64[..len as usize].to_string();
+            b64.zeroize();
+            (pwd, full.to_vec(), None)
         }
     };
     Ok(DerivedSecret { display, entropy, path: path_string(path), fingerprint })

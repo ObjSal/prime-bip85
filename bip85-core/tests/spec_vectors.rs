@@ -107,6 +107,54 @@ fn hex_application() {
     assert_eq!(d.path, "m/83696968'/128169'/64'/0'");
 }
 
+#[test]
+fn pwd_base64_application() {
+    let d = derive(&root(), Application::Pwd { len: 21 }, 0, Network::Mainnet).unwrap();
+    assert_eq!(
+        hex::encode(&d.entropy),
+        "74a2e87a9ba0cdd549bdd2f9ea880d554c6c355b08ed25088cfa88f3f1c4f746\
+         32b652fd4a8f5fda43074c6f6964a3753b08bb5210c8f5e75c07a4c2a20bf6e9"
+    );
+    assert_eq!(d.display, "dKLoepugzdVJvdL56ogNV");
+    assert_eq!(d.path, "m/83696968'/707764'/21'/0'");
+    assert!(d.fingerprint.is_none());
+}
+
+#[test]
+fn pwd_len_bounds() {
+    assert!(derive(&root(), Application::Pwd { len: 19 }, 0, Network::Mainnet).is_err());
+    assert!(derive(&root(), Application::Pwd { len: 87 }, 0, Network::Mainnet).is_err());
+    let d = derive(&root(), Application::Pwd { len: 86 }, 0, Network::Mainnet).unwrap();
+    assert_eq!(d.display.len(), 86);
+    assert!(!d.display.contains('='), "padding must never reach the password");
+}
+
+/// Cross-checked against an independent BIP-85 implementation
+/// (2026-07-11): its fixed test seed's children matched bip85-core on every
+/// application (12/18/24 words, WIF, XPRV, hex 32/64, passwords) at indexes
+/// 0/1/9999. Pinned here: one value per family not already spec-pinned.
+#[test]
+fn cross_implementation_check() {
+    let entropy =
+        hex::decode("faf8c43d8835d20aef178a530bb658071a5252b722ba910a4143d9010ebfded9").unwrap();
+    let root = Xprv::from_bip39_entropy(&entropy, "").unwrap();
+    assert_eq!(root.fingerprint_hex().unwrap(), "0f056943");
+
+    let w18 = derive(&root, Application::Bip39 { words: 18 }, 0, Network::Mainnet).unwrap();
+    assert_eq!(
+        w18.display,
+        "document gospel razor chaos north chest nominee fatigue swamp first \
+         decade boy icon virtual gap prepare series anchor"
+    );
+
+    for (index, expect) in
+        [(0, "BSdrypS+J4Wr1q8DWjbFE"), (1, "TkDX7d9fnX9FZ9QEpjFDB"), (9999, "5dg3lBrlxHr+tbLsvXOdg")]
+    {
+        let d = derive(&root, Application::Pwd { len: 21 }, index, Network::Mainnet).unwrap();
+        assert_eq!(d.display, expect, "password index {index}");
+    }
+}
+
 /// Testnet re-encodings of the spec vectors. BIP-85 has no testnet vectors
 /// (derivation is network-agnostic); these expected strings were computed
 /// with an independent Python base58check implementation from the same
@@ -137,8 +185,11 @@ fn testnet_tprv() {
 fn network_only_affects_wif_and_xprv() {
     for app in [
         Application::Bip39 { words: 12 },
+        Application::Bip39 { words: 18 },
         Application::Bip39 { words: 24 },
         Application::Hex { num_bytes: 32 },
+        Application::Hex { num_bytes: 64 },
+        Application::Pwd { len: 21 },
     ] {
         let m = derive(&root(), app, 0, Network::Mainnet).unwrap();
         let t = derive(&root(), app, 0, Network::Testnet).unwrap();
