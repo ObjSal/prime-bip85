@@ -20,7 +20,7 @@ BIP-85 turns your Passport Prime's master seed into a family tree of independent
 | WIF | a Bitcoin Core `sethdseed` key |
 | XPRV | a BIP-32 root for coordinators |
 | HEX · 32 / 64 bytes | raw entropy for anything else |
-| Password · 20–86 chars | a base64 password (default 21 ≈ 126 bits) for anything with a login |
+| Password · 20–86 chars | a base64 password, 120–512 bits (default 21 chars ≈ 126 bits) for anything with a login |
 
 ## Features
 
