@@ -43,13 +43,9 @@ With the Foundation SDK installed, build and launch in the simulator with:
 foundation sim
 ```
 
-The simulator boots without a wallet seed — see **[DEVELOPMENT.md](DEVELOPMENT.md)** for seed provisioning, derivation paths, correctness testing, and permissions.
-
 ## Learn more
 
-- [DEVELOPMENT.md](DEVELOPMENT.md) — building, derivation paths, correctness, permissions
 - [THIRD-PARTY.md](THIRD-PARTY.md) — libraries this app is built on
-- [NOTES.md](NOTES.md) — simulator seed provisioning and platform gotchas
 
 ## Support
 
